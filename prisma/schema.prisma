@@ -28,11 +28,25 @@ model Session {
 
 // ✅ ONLY ONE SIMPLE MODEL - No complex relations
 model ReferralSettings {
-  id        String?   @id @default(cuid())
+  id        String   @id @default(cuid())
   shop      String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
   // Store everything as JSON - simple solution
   referralRewards Json?
+}
+
+model ReferralCode {
+  id           String   @id @default(cuid())
+  customerId   String
+  customerName String
+  customerEmail String
+  referralCode String   @unique
+  referralLink String
+  referralCount Int     @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("referral_codes")
 }
