@@ -4,7 +4,6 @@ export default function Referrals() {
   const [shopName, setShopName] = useState('');
   const [shopDomain, setShopDomain] = useState('');
   const [customers, setCustomers] = useState([]);
-  const [referralCodes, setReferralCodes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [select2Ready, setSelect2Ready] = useState(false);
@@ -112,7 +111,6 @@ export default function Referrals() {
   useEffect(() => {
     if (select2Ready) {
       loadShopData();
-      loadReferralCodes();
       loadCustomers();
     }
   }, [select2Ready]);
@@ -164,7 +162,7 @@ export default function Referrals() {
     const customerData = customers.find(c => c.id === customer.id);
     if (!customerData) return customer.text;
 
-    const hasReferral = getCustomerReferralData(customerData);
+    const hasReferral = customerData.referralCode;
 
     const $ = window.jQuery;
     const $container = $(
@@ -196,12 +194,14 @@ export default function Referrals() {
     );
   };
 
-  // Load customers from Shopify automatically
+  // Load customers from Shopify automatically with metafields
   const loadCustomers = async () => {
     setLoading(true);
     try {
       const response = await fetch('/api/customers');
       const result = await response.json();
+
+      console.log('Customers loaded with metafields:', result);
 
       if (result.success) {
         setCustomers(result.customers);
@@ -216,21 +216,7 @@ export default function Referrals() {
     }
   };
 
-  // Load referral codes from database
-  const loadReferralCodes = async () => {
-    try {
-      const response = await fetch('/api/referral-codes', { method: 'GET' });
-      const result = await response.json();
-
-      if (result.success) {
-        setReferralCodes(result.referralCodes);
-      }
-    } catch (error) {
-      console.error('Error loading referral codes:', error);
-    }
-  };
-
-  // Generate and save referral code
+  // Generate and save referral code - Metafield mein save karo
   const generateReferralCode = async (customer) => {
     if (!customer) {
       setMessage('Please select a customer first');
@@ -247,16 +233,14 @@ export default function Referrals() {
       console.log('Generating referral with domain:', shopDomain);
       console.log('Referral Link:', referralLink);
 
-      const response = await fetch('/api/referral-codes', {
+      // Metafield mein save karo
+      const response = await fetch('/api/save-referral', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerId: customer.id,
-          customerEmail: customer.email,
-          customerName: customer.name,
-          referralCode,
-          referralLink,
-          referralCount: 0 // Start with 0
+          referralCode: referralCode,
+          referralLink: referralLink
         })
       });
 
@@ -264,9 +248,14 @@ export default function Referrals() {
 
       if (result.success) {
         setMessage(`Referral code generated: ${referralCode}`);
-        setReferralCodes(prev => [...prev, result.referral]);
+        
+        // Update local state
         setCustomers(prev => prev.map(c =>
-          c.id === customer.id ? { ...c, hasReferral: true } : c
+          c.id === customer.id ? { 
+            ...c, 
+            referralCode: referralCode,
+            referralsCount: 0 
+          } : c
         ));
 
         // Refresh Select2 to show updated status
@@ -297,24 +286,20 @@ export default function Referrals() {
     setTimeout(() => setMessage(''), 2000);
   };
 
-  // Get referral data for selected customer
-  const getCustomerReferralData = (customer) => {
-    return referralCodes.find(rc => rc.customerId === customer.id);
-  };
+  // Calculate stats for dashboard - Metafields se
+  const customersWithReferralCodes = customers.filter(c => c.referralCode).length;
+  const totalReferrals = customers.reduce((sum, customer) => sum + (customer.referralsCount || 0), 0);
 
-  // Calculate stats for dashboard - CORRECTED
-  const totalReferrals = referralCodes.reduce((sum, code) => sum + (code.referralCount || 0), 0);
-  const activeReferralCodes = referralCodes.filter(code => code.isActive).length;
-  const customersWithCodes = customers.filter(c => getCustomerReferralData(c)).length;
+  // Filter customers with referral codes and sort by referrals count (descending)
+  const customersWithReferrals = customers
+    .filter(customer => customer.referralCode) // Sirf woh customers jo referral code rakhte hain
+    .sort((a, b) => (b.referralsCount || 0) - (a.referralsCount || 0)); // Zyada referrals wale pehle
 
-  // Sort referral codes by used count (descending)
-  const sortedReferralCodes = [...referralCodes].sort((a, b) => (b.referralCount || 0) - (a.referralCount || 0));
-
-  // Filter referral codes based on search term
-  const filteredReferralCodes = sortedReferralCodes.filter(code => 
-    code.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    code.customerEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    code.referralCode?.toLowerCase().includes(searchTerm.toLowerCase())
+  // Filter based on search term
+  const filteredCustomersWithReferrals = customersWithReferrals.filter(customer => 
+    customer.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    customer.referralCode?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Open create modal
@@ -462,16 +447,16 @@ export default function Referrals() {
             <div style={{ fontSize: "32px", fontWeight: "700" }}>{customers.length}</div>
           </div>
 
-          {/* <div style={{
+          <div style={{
             background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
             color: "white",
             padding: "24px",
             borderRadius: "12px",
             boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)"
           }}>
-            <div style={{ fontSize: "14px", opacity: 0.9, marginBottom: "8px" }}>Active Referral Codes</div>
-            <div style={{ fontSize: "32px", fontWeight: "700" }}>{activeReferralCodes}</div>
-          </div> */}
+            <div style={{ fontSize: "14px", opacity: 0.9, marginBottom: "8px" }}>Customers with Codes</div>
+            <div style={{ fontSize: "32px", fontWeight: "700" }}>{customersWithReferralCodes}</div>
+          </div>
 
           <div style={{
             background: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
@@ -484,20 +469,20 @@ export default function Referrals() {
             <div style={{ fontSize: "32px", fontWeight: "700" }}>{totalReferrals}</div>
           </div>
 
-          {/* <div style={{
+          <div style={{
             background: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
             color: "white",
             padding: "24px",
             borderRadius: "12px",
             boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)"
           }}>
-            <div style={{ fontSize: "14px", opacity: 0.9, marginBottom: "8px" }}>Customers with Codes</div>
-            <div style={{ fontSize: "32px", fontWeight: "700" }}>{customersWithCodes}</div>
-          </div> */}
+            <div style={{ fontSize: "14px", opacity: 0.9, marginBottom: "8px" }}>Active Codes</div>
+            <div style={{ fontSize: "32px", fontWeight: "700" }}>{customersWithReferralCodes}</div>
+          </div>
         </div>
 
-        {/* All Referral Codes */}
-        {referralCodes.length > 0 && (
+        {/* Customers with Referral Codes */}
+        {customersWithReferrals.length > 0 && (
           <div style={{
             background: "white",
             borderRadius: "12px",
@@ -517,7 +502,7 @@ export default function Referrals() {
                 fontSize: "20px",
                 fontWeight: "600"
               }}>
-                All Referral Codes ({referralCodes.length})
+                Referral Codes ({customersWithReferrals.length})
               </h2>
 
               {/* Search Bar */}
@@ -549,137 +534,136 @@ export default function Referrals() {
               </div>
             </div>
 
-         <div style={{
-  background: "white",
-  borderRadius: "8px",
-  overflow: "hidden",
-  border: "1px solid #e2e8f0",
-  maxHeight: "600px",
-  overflowY: "auto"
-}}>
-  {/* Table Header */}
-  <div style={{
-    display: "grid",
-    gridTemplateColumns: "2fr 1fr 1fr 1.5fr",
-    gap: "16px",
-    padding: "16px 20px",
-    background: "#f7fafc",
-    borderBottom: "1px solid #e2e8f0",
-    fontWeight: "600",
-    color: "#4a5568",
-    fontSize: "14px",
-    position: "sticky",
-    top: 0,
-    zIndex: 10
-  }}>
-    <div>Customer</div>
-    <div>Referral Code</div>
-    <div>Used Count</div>
-    <div>Actions</div>
-  </div>
+            <div style={{
+              background: "white",
+              borderRadius: "8px",
+              overflow: "hidden",
+              border: "1px solid #e2e8f0",
+              maxHeight: "600px",
+              overflowY: "auto"
+            }}>
+              {/* Table Header */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "2fr 1fr 1fr 1.5fr",
+                gap: "16px",
+                padding: "16px 20px",
+                background: "#f7fafc",
+                borderBottom: "1px solid #e2e8f0",
+                fontWeight: "600",
+                color: "#4a5568",
+                fontSize: "14px",
+                position: "sticky",
+                top: 0,
+                zIndex: 10
+              }}>
+                <div>Customer</div>
+                <div>Referral Code</div>
+                <div>Used Count</div>
+                <div>Actions</div>
+              </div>
 
-  {/* Table Rows */}
-  {filteredReferralCodes.length > 0 ? (
-    filteredReferralCodes.map((referral, index) => (
-      <div
-        key={referral.id}
-        style={{
-          display: "grid",
-          gridTemplateColumns: "2fr 1fr 1fr 1.5fr",
-          gap: "16px",
-          padding: "16px 20px",
-          borderBottom: index === filteredReferralCodes.length - 1 ? "none" : "1px solid #f7fafc",
-          alignItems: "center",
-          background: index % 2 === 0 ? "#fafafa" : "white",
-          transition: "background 0.2s"
-        }}
-      >
-        <div>
-          <div style={{ fontWeight: "600", color: "#2d3748" }}>{referral.customerName}</div>
-          <div style={{ color: "#718096", fontSize: "12px" }}>{referral.customerEmail}</div>
-        </div>
+              {/* Table Rows - Metafields se data show karo */}
+              {filteredCustomersWithReferrals.length > 0 ? (
+                filteredCustomersWithReferrals.map((customer, index) => (
+                  <div
+                    key={customer.id}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "2fr 1fr 1fr 1.5fr",
+                      gap: "16px",
+                      padding: "16px 20px",
+                      borderBottom: index === filteredCustomersWithReferrals.length - 1 ? "none" : "1px solid #f7fafc",
+                      alignItems: "center",
+                      background: index % 2 === 0 ? "#fafafa" : "white",
+                      transition: "background 0.2s"
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: "600", color: "#2d3748" }}>{customer.name}</div>
+                      <div style={{ color: "#718096", fontSize: "12px" }}>{customer.email}</div>
+                    </div>
 
-        <div style={{
-          fontFamily: "'Fira Code', monospace",
-          fontWeight: "600",
-          color: "#3182ce",
-          fontSize: "14px"
-        }}>
-          {referral.referralCode}
-        </div>
+                    <div style={{
+                      fontFamily: "'Fira Code', monospace",
+                      fontWeight: "600",
+                      color: "#3182ce",
+                      fontSize: "14px"
+                    }}>
+                      {customer.referralCode}
+                    </div>
 
-        <div style={{
-          fontWeight: "600",
-          color: (referral.referralCount || 0) > 0 ? "#38a169" : "#a0aec0",
-          display: "flex",
-          alignItems: "center",
-          gap: "4px"
-        }}>
-          {(referral.referralCount || 0) > 0 && (
-            <span style={{
-              display: "inline-block",
-              width: "8px",
-              height: "8px",
-              borderRadius: "50%",
-              background: "#38a169"
-            }}></span>
-          )}
-          {referral.referralCount || 0} {(referral.referralCount || 0) === 1 ? 'use' : 'uses'}
-        </div>
+                    <div style={{
+                      fontWeight: "600",
+                      color: (customer.referralsCount || 0) > 0 ? "#38a169" : "#a0aec0",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px"
+                    }}>
+                      {(customer.referralsCount || 0) > 0 && (
+                        <span style={{
+                          display: "inline-block",
+                          width: "8px",
+                          height: "8px",
+                          borderRadius: "50%",
+                          background: "#38a169"
+                        }}></span>
+                      )}
+                      {customer.referralsCount || 0} {(customer.referralsCount || 0) === 1 ? 'use' : 'uses'}
+                    </div>
 
-        <div style={{ display: "flex", gap: "8px" }}>
-          <button
-            onClick={() => copyToClipboard(referral.referralCode)}
-            style={{
-              padding: "6px 12px",
-              background: "#3182ce",
-              color: "white",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontSize: "12px",
-              fontWeight: "500",
-              transition: "all 0.2s",
-              flex: 1
-            }}
-          >
-            Copy Code
-          </button>
-          <button
-            onClick={() => copyToClipboard(referral.referralLink, true)}
-            style={{
-              padding: "6px 12px",
-              background: "#38a169",
-              color: "white",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontSize: "12px",
-              fontWeight: "500",
-              transition: "all 0.2s",
-              flex: 1
-            }}
-          >
-            Copy URL
-          </button>
-        </div>
-      </div>
-    ))
-  ) : (
-    <div style={{
-      padding: "40px 20px",
-      textAlign: "center",
-      color: "#718096",
-      fontSize: "16px"
-    }}>
-      No referral codes found matching your search.
-    </div>
-  )}
-</div>
-
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <button
+                        onClick={() => copyToClipboard(customer.referralCode)}
+                        style={{
+                          padding: "6px 12px",
+                          background: "#3182ce",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "6px",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                          fontWeight: "500",
+                          transition: "all 0.2s",
+                          flex: 1
+                        }}
+                      >
+                        Copy Code
+                      </button>
+                      <button
+                        onClick={() => copyToClipboard(`https://${shopDomain}/?ref=${customer.referralCode}`, true)}
+                        style={{
+                          padding: "6px 12px",
+                          background: "#38a169",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "6px",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                          fontWeight: "500",
+                          transition: "all 0.2s",
+                          flex: 1
+                        }}
+                      >
+                        Copy URL
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div style={{
+                  padding: "40px 20px",
+                  textAlign: "center",
+                  color: "#718096",
+                  fontSize: "16px"
+                }}>
+                  No referral codes found matching your search.
+                </div>
+              )}
+            </div>
 
             {/* Summary Stats */}
-            {/* <div style={{
+            <div style={{
               display: "flex",
               justifyContent: "space-between",
               marginTop: "20px",
@@ -691,18 +675,18 @@ export default function Referrals() {
               color: "#4a5568"
             }}>
               <div>
-                <strong>Total Codes:</strong> {referralCodes.length}
+                <strong>Total Codes:</strong> {customersWithReferrals.length}
               </div>
               <div>
-                <strong>Active Codes:</strong> {activeReferralCodes}
+                <strong>Active Codes:</strong> {customersWithReferralCodes}
               </div>
               <div>
                 <strong>Total Referrals:</strong> {totalReferrals}
               </div>
               <div>
-                <strong>Showing:</strong> {filteredReferralCodes.length} codes
+                <strong>Showing:</strong> {filteredCustomersWithReferrals.length} codes
               </div>
-            </div> */}
+            </div>
           </div>
         )}
       </div>
@@ -812,7 +796,7 @@ export default function Referrals() {
                 <p style={{ margin: "4px 0", color: "#4a5568", fontSize: "14px" }}>
                   <strong>Email:</strong> {modalSelectedCustomer.email}
                 </p>
-                {getCustomerReferralData(modalSelectedCustomer) && (
+                {modalSelectedCustomer.referralCode && (
                   <div style={{
                     marginTop: "8px",
                     padding: "6px 10px",
@@ -822,7 +806,7 @@ export default function Referrals() {
                     fontSize: "12px",
                     fontWeight: "500"
                   }}>
-                    Already has referral code
+                    Already has referral code: {modalSelectedCustomer.referralCode}
                   </div>
                 )}
               </div>
@@ -830,26 +814,26 @@ export default function Referrals() {
 
             <button
               onClick={() => generateReferralCode(modalSelectedCustomer)}
-              disabled={loading || !modalSelectedCustomer || getCustomerReferralData(modalSelectedCustomer) || !select2Ready}
+              disabled={loading || !modalSelectedCustomer || modalSelectedCustomer.referralCode || !select2Ready}
               style={{
-                background: !modalSelectedCustomer || getCustomerReferralData(modalSelectedCustomer) ? "#e2e8f0" :
+                background: !modalSelectedCustomer || modalSelectedCustomer.referralCode ? "#e2e8f0" :
                   loading ? "#e2e8f0" : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                color: !modalSelectedCustomer || getCustomerReferralData(modalSelectedCustomer) ? "#a0aec0" : "white",
+                color: !modalSelectedCustomer || modalSelectedCustomer.referralCode ? "#a0aec0" : "white",
                 padding: "12px 24px",
                 border: "none",
                 borderRadius: "8px",
-                cursor: (loading || !modalSelectedCustomer || getCustomerReferralData(modalSelectedCustomer) || !select2Ready) ? "not-allowed" : "pointer",
+                cursor: (loading || !modalSelectedCustomer || modalSelectedCustomer.referralCode || !select2Ready) ? "not-allowed" : "pointer",
                 fontSize: "16px",
                 fontWeight: "600",
                 width: "100%",
                 transition: "all 0.2s",
-                boxShadow: !modalSelectedCustomer || getCustomerReferralData(modalSelectedCustomer) ? "none" : "0 2px 4px rgba(102, 126, 234, 0.3)"
+                boxShadow: !modalSelectedCustomer || modalSelectedCustomer.referralCode ? "none" : "0 2px 4px rgba(102, 126, 234, 0.3)"
               }}
             >
               {!select2Ready ? "Loading..." :
                 loading ? "Generating..." :
                   !modalSelectedCustomer ? "Select a Customer" :
-                    getCustomerReferralData(modalSelectedCustomer) ? "Already Generated" : "Generate Referral Code"}
+                    modalSelectedCustomer.referralCode ? "Already Generated" : "Generate Referral Code"}
             </button>
           </div>
         </div>

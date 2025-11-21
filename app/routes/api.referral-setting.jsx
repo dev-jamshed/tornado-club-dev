@@ -33,6 +33,9 @@ export async function loader({ request }) {
 // =============================
 // POST - Create / Update / Delete
 // =============================
+// =============================
+// POST - Create / Update / Delete
+// =============================
 export async function action({ request }) {
   try {
     const body = await request.json();
@@ -60,21 +63,39 @@ export async function action({ request }) {
     }
 
     // ======================================
-    // UPDATE
+    // UPDATE - FIXED VERSION
     // ======================================
     if (method === "update") {
-      const updateData = await prisma.referralSettings.update({
-        where: { shop },
-        data: {
-          referralRewards,
-          updatedAt: new Date()
-        }
+      // Pehle check karo record exist karta hai ya nahi
+      const existingSettings = await prisma.referralSettings.findFirst({
+        where: { shop }
       });
+
+      let result;
+      
+      if (existingSettings) {
+        // Update existing record
+        result = await prisma.referralSettings.update({
+          where: { shop },
+          data: {
+            referralRewards,
+            updatedAt: new Date()
+          }
+        });
+      } else {
+        // Create new record
+        result = await prisma.referralSettings.create({
+          data: {
+            shop,
+            referralRewards
+          }
+        });
+      }
 
       return Response.json({
         success: true,
-        message: "Updated Successfully",
-        data: updateData
+        message: existingSettings ? "Updated Successfully" : "Created Successfully",
+        data: result
       });
     }
 
@@ -98,6 +119,7 @@ export async function action({ request }) {
     });
 
   } catch (error) {
+    console.error('API Error:', error);
     return Response.json({
       success: false,
       error: error.message

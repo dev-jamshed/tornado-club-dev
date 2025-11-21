@@ -50,3 +50,15 @@ model ReferralCode {
 
   @@map("referral_codes")
 }
+
+model ReferralUsage {
+  id          String   @id @default(cuid())
+  customerId  String?  
+  customerEmail String? 
+  referralCode String  
+  usedAt      DateTime @default(now())
+  orderId     String?  
+  // No unique constraints - allow multiple uses
+  @@index([customerEmail, referralCode])
+  @@index([customerId, referralCode])
+}

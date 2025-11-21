@@ -10,9 +10,12 @@ export default function ReferralSettings() {
   const [currentReward, setCurrentReward] = useState({ 
     id: null,
     referralCount: '', 
-    referrerProduct: '',
-    refereeProduct: ''
+    referrerProduct: '', // Referrer ka product change hoga
+    // refereeProduct fixed rahega overall
   });
+
+  // Fixed referee product - yeh sab rewards ke liye same rahega
+  const [fixedRefereeProduct, setFixedRefereeProduct] = useState('');
 
   // Load data on component mount
   useEffect(() => {
@@ -31,7 +34,7 @@ export default function ReferralSettings() {
         const productsResult = await productsResponse.json();
         
         if (productsResult.success) {
-          setProducts([{ label: 'Select Product', value: '' }, ...productsResult.data]);
+          setProducts([{ label: 'Select Product for New Customers', value: '' }, ...productsResult.data]);
         } else {
           throw new Error(productsResult.error);
         }
@@ -45,11 +48,14 @@ export default function ReferralSettings() {
         const settingsResponse = await fetch('/api/referral-setting');
         const settingsResult = await settingsResponse.json();
         if (settingsResult.success) {
-          setReferralRewards(settingsResult.data.referralRewards || []);
+          const data = settingsResult.data.referralRewards || [];
+          setReferralRewards(data.rewards || []);
+          setFixedRefereeProduct(data.fixedRefereeProduct || '');
           setMessage('✅ Data loaded successfully!');
         }
       } catch (error) {
         setReferralRewards([]);
+        setFixedRefereeProduct('');
         setMessage('ℹ️ Starting fresh session');
       }
       
@@ -66,7 +72,6 @@ export default function ReferralSettings() {
       id: null,
       referralCount: '', 
       referrerProduct: '', 
-      refereeProduct: '' 
     });
     setShowModal(true);
   };
@@ -77,14 +82,13 @@ export default function ReferralSettings() {
       id: reward.id || Date.now(),
       referralCount: reward.referralCount, 
       referrerProduct: reward.referrerProduct, 
-      refereeProduct: reward.refereeProduct 
     });
     setShowModal(true);
   };
 
   // Save reward to local state
   const saveReward = () => {
-    if (!currentReward.referralCount || !currentReward.referrerProduct || !currentReward.refereeProduct) {
+    if (!currentReward.referralCount || !currentReward.referrerProduct) {
       alert('Please fill all fields');
       return;
     }
@@ -133,7 +137,7 @@ export default function ReferralSettings() {
   };
 
   // ✅ AUTO SAVE - No manual save button needed
-  const autoSaveToDatabase = async (updatedRewards) => {
+  const autoSaveToDatabase = async (updatedRewards, fixedProduct) => {
     setSaving(true);
     
     try {
@@ -141,7 +145,10 @@ export default function ReferralSettings() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          referralRewards: updatedRewards,
+          referralRewards: {
+            rewards: updatedRewards,
+            fixedRefereeProduct: fixedProduct
+          },
           method: "update"
         })
       });
@@ -160,16 +167,16 @@ export default function ReferralSettings() {
     }
   };
 
-  // Auto-save when rewards change
+  // Auto-save when rewards or fixed product change
   useEffect(() => {
-    if (referralRewards.length > 0) {
+    if (referralRewards.length > 0 || fixedRefereeProduct) {
       const timer = setTimeout(() => {
-        autoSaveToDatabase(referralRewards);
-      }, 1000); // Auto-save after 1 second of changes
+        autoSaveToDatabase(referralRewards, fixedRefereeProduct);
+      }, 1000);
       
       return () => clearTimeout(timer);
     }
-  }, [referralRewards]);
+  }, [referralRewards, fixedRefereeProduct]);
 
   if (loading) {
     return (
@@ -200,6 +207,42 @@ export default function ReferralSettings() {
           {saving && ' (Saving...)'}
         </div>
       )}
+
+      {/* Fixed Referee Product Section */}
+      <div style={{ 
+        background: '#fff3cd', 
+        padding: '25px', 
+        borderRadius: '12px', 
+        marginBottom: '30px',
+        border: '2px solid #ffeaa7'
+      }}>
+        <h3 style={{ marginBottom: '20px', color: '#856404' }}>
+          🎁 Fixed Gift for New Customers (Referees)
+        </h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <label style={{ fontWeight: 'bold', minWidth: '200px' }}>
+            Product for Every New Customer:
+          </label>
+          <select 
+            value={fixedRefereeProduct}
+            onChange={(e) => setFixedRefereeProduct(e.target.value)}
+            style={{ 
+              padding: '12px', 
+              width: '300px', 
+              border: '2px solid #e1e3e5',
+              borderRadius: '6px',
+              fontSize: '16px',
+              background: 'white'
+            }}
+          >
+            {/* <option value=""></option> */}
+            {products.map(product => (
+              <option key={product.value} value={product.value}>{product.label}</option>
+            ))}
+          </select>
+        
+        </div>
+      </div>
 
       {/* Status Bar */}
       <div style={{ 
@@ -246,8 +289,8 @@ export default function ReferralSettings() {
             color: '#666',
             background: '#fafafa'
           }}>
-            <h3 style={{ color: '#999', marginBottom: '15px' }}>No Reward Levels</h3>
-            <p style={{ marginBottom: '25px' }}>Start by adding your first reward level to begin your referral program</p>
+            <h3 style={{ color: '#999', marginBottom: '15px' }}>No Reward Levels for Referrers</h3>
+            <p style={{ marginBottom: '25px' }}>Start by adding reward levels for your referrers</p>
             <button 
               onClick={openAddModal}
               style={{ 
@@ -274,7 +317,7 @@ export default function ReferralSettings() {
             {/* Table Header */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 2fr 2fr 1fr',
+              gridTemplateColumns: '1fr 2fr 1fr',
               gap: '15px',
               padding: '15px 20px',
               background: '#f8f9fa',
@@ -283,8 +326,7 @@ export default function ReferralSettings() {
               color: '#333'
             }}>
               <div>Referrals</div>
-              <div>Referrer Product</div>
-              <div>Referee Product</div>
+              <div>Reward for Referrer</div>
               <div style={{ textAlign: 'center' }}>Actions</div>
             </div>
 
@@ -294,7 +336,7 @@ export default function ReferralSettings() {
                 key={reward.id} 
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr 2fr 2fr 1fr',
+                  gridTemplateColumns: '1fr 2fr 1fr',
                   gap: '15px',
                   padding: '15px 20px',
                   borderBottom: index === referralRewards.length - 1 ? 'none' : '1px solid #e1e3e5',
@@ -307,10 +349,6 @@ export default function ReferralSettings() {
                 
                 <div>
                   {products.find(p => p.value === reward.referrerProduct)?.label || 'Product not found'}
-                </div>
-                
-                <div>
-                  {products.find(p => p.value === reward.refereeProduct)?.label || 'Product not found'}
                 </div>
                 
                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
@@ -399,8 +437,8 @@ export default function ReferralSettings() {
               )}
             </div>
 
-            <div style={{ marginBottom: '25px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Product for Referrer *</label>
+            <div style={{ marginBottom: '30px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Reward for Referrer *</label>
               <select 
                 value={currentReward.referrerProduct}
                 onChange={(e) => setCurrentReward({...currentReward, referrerProduct: e.target.value})}
@@ -412,29 +450,30 @@ export default function ReferralSettings() {
                   fontSize: '16px'
                 }}
               >
+                <option value="">Select Product for Referrer</option>
                 {products.map(product => (
                   <option key={product.value} value={product.value}>{product.label}</option>
                 ))}
               </select>
             </div>
 
-            <div style={{ marginBottom: '30px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Product for Referee *</label>
-              <select 
-                value={currentReward.refereeProduct}
-                onChange={(e) => setCurrentReward({...currentReward, refereeProduct: e.target.value})}
-                style={{ 
-                  padding: '12px', 
-                  width: '100%', 
-                  border: '2px solid #e1e3e5',
-                  borderRadius: '6px',
-                  fontSize: '16px'
-                }}
-              >
-                {products.map(product => (
-                  <option key={product.value} value={product.value}>{product.label}</option>
-                ))}
-              </select>
+            <div style={{ 
+              background: '#e7f3ff', 
+              padding: '15px', 
+              borderRadius: '6px',
+              marginBottom: '20px',
+              border: '1px solid #b3d9ff'
+            }}>
+              <strong>🎁 For New Customers:</strong>
+              <div style={{ marginTop: '5px', color: '#0066cc' }}>
+                {fixedRefereeProduct 
+                  ? products.find(p => p.value === fixedRefereeProduct)?.label || 'Selected Product'
+                  : 'No product selected yet'
+                }
+              </div>
+              <small style={{ color: '#666' }}>
+                This product will be given to every new customer who signs up via referral
+              </small>
             </div>
 
             <div style={{ display: 'flex', gap: '15px', justifyContent: 'flex-end' }}>
