@@ -217,11 +217,11 @@ export default function ReferralSettings() {
         border: '2px solid #ffeaa7'
       }}>
         <h3 style={{ marginBottom: '20px', color: '#856404' }}>
-          🎁 Fixed Gift for New Customers (Referees)
+         Fixed Gift for Referees
         </h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <label style={{ fontWeight: 'bold', minWidth: '200px' }}>
-            Product for Every New Customer:
+           Product Reward for Every Referee
           </label>
           <select 
             value={fixedRefereeProduct}
@@ -457,7 +457,7 @@ export default function ReferralSettings() {
               </select>
             </div>
 
-            <div style={{ 
+            {/* <div style={{ 
               background: '#e7f3ff', 
               padding: '15px', 
               borderRadius: '6px',
@@ -474,7 +474,7 @@ export default function ReferralSettings() {
               <small style={{ color: '#666' }}>
                 This product will be given to every new customer who signs up via referral
               </small>
-            </div>
+            </div> */}
 
             <div style={{ display: 'flex', gap: '15px', justifyContent: 'flex-end' }}>
               <button 
