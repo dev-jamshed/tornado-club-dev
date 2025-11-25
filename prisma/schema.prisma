@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,56 +8,58 @@ datasource db {
 }
 
 model Session {
-  id            String    @id
-  shop          String
-  state         String
-  isOnline      Boolean   @default(false)
-  scope         String?
-  expires       DateTime?
-  accessToken   String
-  userId        BigInt?
-  firstName     String?
-  lastName      String?
-  email         String?
-  accountOwner  Boolean   @default(false)
-  locale        String?
-  collaborator  Boolean?  @default(false)
-  emailVerified Boolean?  @default(false)
+  id             String    @id
+  shop           String
+  state          String
+  isOnline       Boolean   @default(false)
+  scope          String?
+  expires        DateTime?
+  accessToken    String
+  userId         BigInt?
+  firstName      String?
+  lastName       String?
+  email          String?
+  accountOwner   Boolean   @default(false)
+  locale         String?
+  collaborator   Boolean?  @default(false)
+  emailVerified  Boolean?  @default(false)
+  referralCode   String?   @unique
+  referralSource String?
+  storedAt       DateTime?
+
+  @@map("sessions")
 }
 
-// ✅ ONLY ONE SIMPLE MODEL - No complex relations
 model ReferralSettings {
-  id        String   @id @default(cuid())
-  shop      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  // Store everything as JSON - simple solution
+  id              String   @id @default(cuid())
+  shop            String   @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
   referralRewards Json?
 }
 
 model ReferralCode {
-  id           String   @id @default(cuid())
-  customerId   String
-  customerName String
+  id            String   @id @default(cuid())
+  customerId    String
+  customerName  String
   customerEmail String
-  referralCode String   @unique
-  referralLink String
-  referralCount Int     @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  referralCode  String   @unique
+  referralLink  String
+  referralCount Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@map("referral_codes")
 }
 
 model ReferralUsage {
-  id          String   @id @default(cuid())
-  customerId  String?  
-  customerEmail String? 
-  referralCode String  
-  usedAt      DateTime @default(now())
-  orderId     String?  
-  // No unique constraints - allow multiple uses
+  id            String   @id @default(cuid())
+  customerId    String?
+  customerEmail String?
+  referralCode  String
+  usedAt        DateTime @default(now())
+  orderId       String?
+
   @@index([customerEmail, referralCode])
   @@index([customerId, referralCode])
 }
