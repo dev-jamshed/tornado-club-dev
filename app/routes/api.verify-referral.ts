@@ -16,9 +16,15 @@ function corsResponse(body: any, status = 200) {
 }
 
 export async function loader() {
+
+
+  const referralData = await prisma.referralCode.findMany();
+
+
   return corsResponse({ 
     success: true, 
     message: "Referral verification API is running",
+    data : referralData,
     timestamp: new Date().toISOString()
   });
 }
