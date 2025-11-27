@@ -1,6 +1,5 @@
 import { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { PrismaClient } from "@prisma/client";
-import { authenticate } from "../shopify.server";
 
 const prisma = new PrismaClient();
 
@@ -27,12 +26,7 @@ type ActionBody = {
 // =============================
 export async function loader({ request }: LoaderFunctionArgs) {
   try {
-    const { session } = await authenticate.admin(request);
-    const shop = session.shop;
-
-    const settings = await prisma.referralSettings.findFirst({
-      where: { shop },
-    });
+    const settings = await prisma.referralSettings.findFirst();
 
     return Response.json({
       success: true,
@@ -56,14 +50,11 @@ export async function action({ request }: ActionFunctionArgs) {
     const body = (await request.json()) as ActionBody;
     const { referralRewards, method } = body;
 
-    const { session } = await authenticate.admin(request);
-    const shop = session.shop;
-
     // CREATE
     if (method === "create") {
       const created = await prisma.referralSettings.create({
         data: {
-          shop,
+          shop: "global", // simple fixed value
           referralRewards: referralRewards || [],
         },
       });
@@ -77,16 +68,14 @@ export async function action({ request }: ActionFunctionArgs) {
 
     // UPDATE (Safe version)
     if (method === "update") {
-      const existingSettings = await prisma.referralSettings.findFirst({
-        where: { shop },
-      });
+      const existingSettings = await prisma.referralSettings.findFirst();
 
       let result;
 
       if (existingSettings) {
         // update existing
         result = await prisma.referralSettings.update({
-          where: { shop },
+          where: { id: existingSettings.id },
           data: {
             referralRewards: referralRewards || [],
             updatedAt: new Date(),
@@ -96,7 +85,7 @@ export async function action({ request }: ActionFunctionArgs) {
         // create new if not exist
         result = await prisma.referralSettings.create({
           data: {
-            shop,
+            shop: "global",
             referralRewards: referralRewards || [],
           },
         });
@@ -111,9 +100,13 @@ export async function action({ request }: ActionFunctionArgs) {
 
     // DELETE
     if (method === "delete") {
-      await prisma.referralSettings.delete({
-        where: { shop },
-      });
+      const existingSettings = await prisma.referralSettings.findFirst();
+      
+      if (existingSettings) {
+        await prisma.referralSettings.delete({
+          where: { id: existingSettings.id },
+        });
+      }
 
       return Response.json({
         success: true,

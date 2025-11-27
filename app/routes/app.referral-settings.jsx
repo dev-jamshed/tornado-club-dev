@@ -44,6 +44,8 @@ export default function ReferralSettings() {
       // Load database settings
       try {
         const settingsResponse = await fetch('/api/referral-setting');
+        console.log('⚙️ Fetching referral settings from database...');
+        console.log('➡️ settingsResponse:', settingsResponse);
         const settingsResult = await settingsResponse.json();
         if (settingsResult.success) {
           const data = settingsResult.data.referralRewards || [];
