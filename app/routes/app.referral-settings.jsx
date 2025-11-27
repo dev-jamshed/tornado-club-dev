@@ -10,11 +10,9 @@ export default function ReferralSettings() {
   const [currentReward, setCurrentReward] = useState({ 
     id: null,
     referralCount: '', 
-    referrerProduct: '', // Referrer ka product change hoga
-    // refereeProduct fixed rahega overall
+    referrerProduct: '',
   });
 
-  // Fixed referee product - yeh sab rewards ke liye same rahega
   const [fixedRefereeProduct, setFixedRefereeProduct] = useState('');
 
   // Load data on component mount
@@ -34,7 +32,7 @@ export default function ReferralSettings() {
         const productsResult = await productsResponse.json();
         
         if (productsResult.success) {
-          setProducts([{ label: 'Select Product for New Customers', value: '' }, ...productsResult.data]);
+          setProducts([{ label: 'Select Product', value: '' }, ...productsResult.data]);
         } else {
           throw new Error(productsResult.error);
         }
@@ -51,7 +49,7 @@ export default function ReferralSettings() {
           const data = settingsResult.data.referralRewards || [];
           setReferralRewards(data.rewards || []);
           setFixedRefereeProduct(data.fixedRefereeProduct || '');
-          setMessage('✅ Data loaded successfully!');
+          setMessage('✅ Settings loaded successfully!');
         }
       } catch (error) {
         setReferralRewards([]);
@@ -93,7 +91,6 @@ export default function ReferralSettings() {
       return;
     }
 
-    // ✅ Check if referral count already exists (for new rewards only)
     if (!currentReward.id) {
       const existingReward = referralRewards.find(
         reward => reward.referralCount === currentReward.referralCount
@@ -106,7 +103,6 @@ export default function ReferralSettings() {
     }
 
     if (currentReward.id) {
-      // Update existing reward
       setReferralRewards(prev => 
         prev.map(reward => 
           reward.id === currentReward.id ? currentReward : reward
@@ -114,7 +110,6 @@ export default function ReferralSettings() {
       );
       setMessage('✅ Reward updated!');
     } else {
-      // Add new reward with unique ID
       const newReward = { ...currentReward, id: Date.now() };
       setReferralRewards(prev => [...prev, newReward]);
       setMessage('✅ New reward added!');
@@ -136,7 +131,7 @@ export default function ReferralSettings() {
     }
   };
 
-  // ✅ AUTO SAVE - No manual save button needed
+  // Auto-save to database
   const autoSaveToDatabase = async (updatedRewards, fixedProduct) => {
     setSaving(true);
     
@@ -180,9 +175,31 @@ export default function ReferralSettings() {
 
   if (loading) {
     return (
-      <div style={{ padding: '50px', textAlign: 'center' }}>
-        <h2>Loading Referral Settings...</h2>
-        <button onClick={loadInitialData} style={{ padding: '10px 20px', background: '#007bff', color: 'white', border: 'none', borderRadius: '5px' }}>
+      <div style={{ 
+        padding: '50px', 
+        textAlign: 'center',
+        background: '#f8fafc',
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center'
+      }}>
+        <h2 style={{ color: '#2d3748', marginBottom: '20px' }}>Loading Referral Settings...</h2>
+        <button 
+          onClick={loadInitialData} 
+          style={{ 
+            padding: '12px 24px', 
+            background: '#3182ce', 
+            color: 'white', 
+            border: 'none', 
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+        >
           Retry Loading
         </button>
       </div>
@@ -190,18 +207,81 @@ export default function ReferralSettings() {
   }
 
   return (
-    <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-      <h1>🎯 Referral Program Settings</h1>
-      
+    <div style={{
+      padding: "20px",
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+      background: "#f8fafc",
+      minHeight: "100vh",
+      maxWidth: "1200px",
+      margin: "0 auto"
+    }}>
+
+      {/* Header */}
+      <div style={{
+        background: "white",
+        borderRadius: "12px",
+        padding: "24px",
+        marginBottom: "24px",
+        boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
+        border: "1px solid #e2e8f0"
+      }}>
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "8px"
+        }}>
+          <div>
+            <h1 style={{
+              color: "#1a202c",
+              margin: "0 0 4px 0",
+              fontSize: "28px",
+              fontWeight: "700"
+            }}>
+              ⚙️ Referral Program Settings
+            </h1>
+            <p style={{
+              color: "#718096",
+              margin: 0,
+              fontSize: "14px"
+            }}>
+              Product Reward for Every Referee
+
+            </p>
+          </div>
+
+          <div style={{ display: "flex", gap: "12px" }}>
+            <button
+              onClick={loadInitialData}
+              disabled={loading}
+              style={{
+                padding: '10px 20px',
+                background: '#6c757d',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              Refresh
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Message Display */}
       {message && (
-        <div style={{ 
-          padding: '15px', 
-          background: message.includes('✅') ? '#d4edda' : '#f8d7da',
-          border: `1px solid ${message.includes('✅') ? '#c3e6cb' : '#f5c6cb'}`,
-          borderRadius: '8px',
-          marginBottom: '25px',
-          color: message.includes('✅') ? '#155724' : '#721c24'
+        <div style={{
+          padding: '16px',
+          background: message.includes('✅') ? '#f0fff4' : '#fff5f5',
+          border: `1px solid ${message.includes('✅') ? '#9ae6b4' : '#fed7d7'}`,
+          borderRadius: '12px',
+          marginBottom: '24px',
+          color: message.includes('✅') ? '#276749' : '#c53030',
+          fontWeight: '500'
         }}>
           {message}
           {saving && ' (Saving...)'}
@@ -210,38 +290,59 @@ export default function ReferralSettings() {
 
       {/* Fixed Referee Product Section */}
       <div style={{ 
-        background: '#fff3cd', 
-        padding: '25px', 
+        background: "white",
+        padding: '24px', 
         borderRadius: '12px', 
-        marginBottom: '30px',
-        border: '2px solid #ffeaa7'
+        marginBottom: '24px',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
       }}>
-        <h3 style={{ marginBottom: '20px', color: '#856404' }}>
-         Fixed Gift for Referees
+        <h3 style={{ 
+          marginBottom: '20px', 
+          color: '#2d3748',
+          fontSize: '18px',
+          fontWeight: '600'
+        }}>
+          🎁 Gift for Referees
         </h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <label style={{ fontWeight: 'bold', minWidth: '200px' }}>
-           Product Reward for Every Referee
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <label style={{ 
+            fontWeight: '600', 
+            minWidth: '220px', 
+            color: '#4a5568',
+            fontSize: '14px'
+          }}>
+            Product for Every New Customer
           </label>
           <select 
             value={fixedRefereeProduct}
             onChange={(e) => setFixedRefereeProduct(e.target.value)}
             style={{ 
-              padding: '12px', 
-              width: '300px', 
-              border: '2px solid #e1e3e5',
-              borderRadius: '6px',
-              fontSize: '16px',
-              background: 'white'
+              padding: '12px 16px', 
+              width: '400px', 
+              border: '2px solid #e2e8f0',
+              borderRadius: '8px',
+              fontSize: '14px',
+              background: 'white',
+              transition: 'all 0.2s',
+              color: '#4a5568'
             }}
           >
-            {/* <option value=""></option> */}
+            <option value="">Select a product...</option>
             {products.map(product => (
               <option key={product.value} value={product.value}>{product.label}</option>
             ))}
           </select>
-        
         </div>
+        <p style={{ 
+          marginTop: '12px', 
+          color: '#718096', 
+          fontSize: '13px',
+          fontStyle: 'italic'
+        }}>
+            Every new customer who uses a referral link will receive this product
+
+        </p>
       </div>
 
       {/* Status Bar */}
@@ -249,16 +350,19 @@ export default function ReferralSettings() {
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center', 
-        background: '#e7f3ff', 
-        padding: '15px 20px', 
-        borderRadius: '8px', 
-        marginBottom: '20px',
-        border: '1px solid #b3d9ff'
+        background: 'white', 
+        padding: '20px', 
+        borderRadius: '12px', 
+        marginBottom: '24px',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
       }}>
-        <div>
-          <strong>🔗 Connected to:</strong>
-          <span style={{ marginLeft: '10px' }}>
-            Database: ✅ Active • Shopify: ✅ {products.length} Products • Reward Levels: {referralRewards.length}
+        <div style={{ color: '#4a5568', fontSize: '14px' }}>
+          <strong style={{ color: '#2d3748' }}>🔗 Connection Status:</strong>
+          <span style={{ marginLeft: '12px' }}>
+            Database: <span style={{ color: '#38a169', fontWeight: '600' }}>✅ Active</span> • 
+            Shopify: <span style={{ color: '#38a169', fontWeight: '600' }}>✅ {products.length} Products</span> • 
+            Reward Levels: <span style={{ color: '#3182ce', fontWeight: '600' }}>{referralRewards.length}</span>
           </span>
         </div>
         
@@ -266,12 +370,15 @@ export default function ReferralSettings() {
           onClick={openAddModal} 
           style={{ 
             padding: '10px 20px', 
-            background: '#007bff', 
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             color: 'white', 
             border: 'none', 
-            borderRadius: '6px',
+            borderRadius: '8px',
             fontSize: '14px',
-            fontWeight: 'bold'
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            boxShadow: '0 2px 4px rgba(102, 126, 234, 0.3)'
           }}
         >
           ➕ Add Reward Level
@@ -284,23 +391,26 @@ export default function ReferralSettings() {
           <div style={{ 
             textAlign: 'center', 
             padding: '60px 40px', 
-            border: '2px dashed #ddd',
+            border: '2px dashed #e2e8f0',
             borderRadius: '12px',
-            color: '#666',
-            background: '#fafafa'
+            color: '#718096',
+            background: 'white',
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
           }}>
-            <h3 style={{ color: '#999', marginBottom: '15px' }}>No Reward Levels for Referrers</h3>
-            <p style={{ marginBottom: '25px' }}>Start by adding reward levels for your referrers</p>
+            <h3 style={{ color: '#a0aec0', marginBottom: '16px', fontSize: '18px' }}>No Reward Levels Configured</h3>
+            <p style={{ marginBottom: '24px', fontSize: '14px' }}>Start by adding reward levels for your referrers</p>
             <button 
               onClick={openAddModal}
               style={{ 
-                padding: '12px 25px', 
-                background: '#28a745', 
+                padding: '12px 24px', 
+                background: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
                 color: 'white', 
                 border: 'none', 
-                borderRadius: '6px',
+                borderRadius: '8px',
                 cursor: 'pointer',
-                fontSize: '16px'
+                fontSize: '14px',
+                fontWeight: '600',
+                transition: 'all 0.2s'
               }}
             >
               Create First Reward Level
@@ -309,23 +419,24 @@ export default function ReferralSettings() {
         ) : (
           <div style={{ 
             background: 'white', 
-            border: '1px solid #e1e3e5', 
+            border: '1px solid #e2e8f0', 
             borderRadius: '12px',
             overflow: 'hidden',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            boxShadow: '0 1px 3px 0 rgba(0,0,0,0.1)'
           }}>
             {/* Table Header */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: '1fr 2fr 1fr',
-              gap: '15px',
-              padding: '15px 20px',
-              background: '#f8f9fa',
-              borderBottom: '2px solid #e1e3e5',
-              fontWeight: 'bold',
-              color: '#333'
+              gap: '20px',
+              padding: '16px 24px',
+              background: '#f7fafc',
+              borderBottom: '1px solid #e2e8f0',
+              fontWeight: '600',
+              color: '#4a5568',
+              fontSize: '14px'
             }}>
-              <div>Referrals</div>
+              <div>Referrals Required</div>
               <div>Reward for Referrer</div>
               <div style={{ textAlign: 'center' }}>Actions</div>
             </div>
@@ -337,17 +448,19 @@ export default function ReferralSettings() {
                 style={{
                   display: 'grid',
                   gridTemplateColumns: '1fr 2fr 1fr',
-                  gap: '15px',
-                  padding: '15px 20px',
-                  borderBottom: index === referralRewards.length - 1 ? 'none' : '1px solid #e1e3e5',
-                  alignItems: 'center'
+                  gap: '20px',
+                  padding: '16px 24px',
+                  borderBottom: index === referralRewards.length - 1 ? 'none' : '1px solid #f7fafc',
+                  alignItems: 'center',
+                  background: index % 2 === 0 ? '#fafafa' : 'white',
+                  transition: 'background 0.2s'
                 }}
               >
-                <div style={{ fontWeight: 'bold', color: '#007bff' }}>
+                <div style={{ fontWeight: '600', color: '#3182ce', fontSize: '15px' }}>
                   After {reward.referralCount} Referral{reward.referralCount > 1 ? 's' : ''}
                 </div>
                 
-                <div>
+                <div style={{ color: '#4a5568', fontSize: '14px' }}>
                   {products.find(p => p.value === reward.referrerProduct)?.label || 'Product not found'}
                 </div>
                 
@@ -355,13 +468,15 @@ export default function ReferralSettings() {
                   <button 
                     onClick={() => openEditModal(reward)}
                     style={{ 
-                      padding: '6px 12px', 
-                      background: '#17a2b8', 
+                      padding: '8px 16px', 
+                      background: '#3182ce', 
                       color: 'white', 
                       border: 'none', 
-                      borderRadius: '4px',
+                      borderRadius: '6px',
                       cursor: 'pointer',
-                      fontSize: '12px'
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      transition: 'all 0.2s'
                     }}
                   >
                     ✏️ Edit
@@ -369,13 +484,15 @@ export default function ReferralSettings() {
                   <button 
                     onClick={() => deleteReward(reward.id)}
                     style={{ 
-                      padding: '6px 12px', 
-                      background: '#dc3545', 
+                      padding: '8px 16px', 
+                      background: '#e53e3e', 
                       color: 'white', 
                       border: 'none', 
-                      borderRadius: '4px',
+                      borderRadius: '6px',
                       cursor: 'pointer',
-                      fontSize: '12px'
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      transition: 'all 0.2s'
                     }}
                   >
                     🗑️ Delete
@@ -395,59 +512,109 @@ export default function ReferralSettings() {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
+          background: 'rgba(0, 0, 0, 0.5)',
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          zIndex: 1000
+          zIndex: 1000,
+          padding: '20px'
         }}>
           <div style={{
             background: 'white',
-            padding: '30px',
             borderRadius: '12px',
-            width: '90%',
+            padding: '24px',
+            width: '100%',
             maxWidth: '500px',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
+            maxHeight: '90vh',
+            overflow: 'auto',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            border: '1px solid #e2e8f0'
           }}>
-            <h2 style={{ marginBottom: '25px' }}>
-              {currentReward.id ? 'Edit Reward Level' : 'Add Reward Level'}
-            </h2>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '20px'
+            }}>
+              <h2 style={{
+                margin: 0,
+                color: '#2d3748',
+                fontSize: '20px',
+                fontWeight: '600'
+              }}>
+                {currentReward.id ? 'Edit Reward Level' : 'Add Reward Level'}
+              </h2>
+              <button
+                onClick={() => setShowModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '20px',
+                  cursor: 'pointer',
+                  color: '#718096',
+                  padding: '4px',
+                  borderRadius: '4px',
+                  transition: 'all 0.2s'
+                }}
+              >
+                ✕
+              </button>
+            </div>
             
-            <div style={{ marginBottom: '25px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>After How Many Referrals? *</label>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ 
+                display: "block", 
+                marginBottom: "8px", 
+                color: "#4a5568", 
+                fontWeight: "500",
+                fontSize: "14px"
+              }}>
+                After How Many Referrals? *
+              </label>
               <input 
                 type="number"
                 value={currentReward.referralCount}
                 onChange={(e) => setCurrentReward({...currentReward, referralCount: e.target.value})}
                 placeholder="e.g., 1, 3, 5"
                 style={{ 
-                  padding: '12px', 
+                  padding: '12px 16px', 
                   width: '100%', 
-                  border: '2px solid #e1e3e5',
-                  borderRadius: '6px',
-                  fontSize: '16px'
+                  border: '2px solid #e2e8f0',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  transition: 'all 0.2s',
+                  color: '#4a5568'
                 }}
                 min="1"
               />
-              {/* Show warning if referral count already exists */}
               {!currentReward.id && currentReward.referralCount && referralRewards.find(reward => reward.referralCount === currentReward.referralCount) && (
-                <div style={{ color: '#dc3545', fontSize: '14px', marginTop: '5px' }}>
+                <div style={{ color: '#e53e3e', fontSize: '13px', marginTop: '8px', fontWeight: '500' }}>
                   ⚠️ Reward for {currentReward.referralCount} referrals already exists!
                 </div>
               )}
             </div>
 
-            <div style={{ marginBottom: '30px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Reward for Referrer *</label>
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ 
+                display: "block", 
+                marginBottom: "8px", 
+                color: "#4a5568", 
+                fontWeight: "500",
+                fontSize: "14px"
+              }}>
+                Reward for Referrer *
+              </label>
               <select 
                 value={currentReward.referrerProduct}
                 onChange={(e) => setCurrentReward({...currentReward, referrerProduct: e.target.value})}
                 style={{ 
-                  padding: '12px', 
+                  padding: '12px 16px', 
                   width: '100%', 
-                  border: '2px solid #e1e3e5',
-                  borderRadius: '6px',
-                  fontSize: '16px'
+                  border: '2px solid #e2e8f0',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  transition: 'all 0.2s',
+                  color: '#4a5568'
                 }}
               >
                 <option value="">Select Product for Referrer</option>
@@ -457,35 +624,19 @@ export default function ReferralSettings() {
               </select>
             </div>
 
-            {/* <div style={{ 
-              background: '#e7f3ff', 
-              padding: '15px', 
-              borderRadius: '6px',
-              marginBottom: '20px',
-              border: '1px solid #b3d9ff'
-            }}>
-              <strong>🎁 For New Customers:</strong>
-              <div style={{ marginTop: '5px', color: '#0066cc' }}>
-                {fixedRefereeProduct 
-                  ? products.find(p => p.value === fixedRefereeProduct)?.label || 'Selected Product'
-                  : 'No product selected yet'
-                }
-              </div>
-              <small style={{ color: '#666' }}>
-                This product will be given to every new customer who signs up via referral
-              </small>
-            </div> */}
-
-            <div style={{ display: 'flex', gap: '15px', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button 
                 onClick={() => setShowModal(false)}
                 style={{ 
-                  padding: '12px 25px', 
-                  background: '#6c757d', 
+                  padding: '12px 24px', 
+                  background: '#a0aec0', 
                   color: 'white', 
                   border: 'none', 
-                  borderRadius: '6px',
-                  cursor: 'pointer'
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s'
                 }}
               >
                 Cancel
@@ -494,12 +645,19 @@ export default function ReferralSettings() {
                 onClick={saveReward}
                 disabled={!currentReward.id && currentReward.referralCount && referralRewards.find(reward => reward.referralCount === currentReward.referralCount)}
                 style={{ 
-                  padding: '12px 25px', 
-                  background: (!currentReward.id && currentReward.referralCount && referralRewards.find(reward => reward.referralCount === currentReward.referralCount)) ? '#6c757d' : '#007bff', 
+                  padding: '12px 24px', 
+                  background: (!currentReward.id && currentReward.referralCount && referralRewards.find(reward => reward.referralCount === currentReward.referralCount)) 
+                    ? '#a0aec0' 
+                    : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
                   color: 'white', 
                   border: 'none', 
-                  borderRadius: '6px',
-                  cursor: (!currentReward.id && currentReward.referralCount && referralRewards.find(reward => reward.referralCount === currentReward.referralCount)) ? 'not-allowed' : 'pointer'
+                  borderRadius: '8px',
+                  cursor: (!currentReward.id && currentReward.referralCount && referralRewards.find(reward => reward.referralCount === currentReward.referralCount)) 
+                    ? 'not-allowed' 
+                    : 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  transition: 'all 0.2s'
                 }}
               >
                 {currentReward.id ? 'Update Reward' : 'Save Reward'}
