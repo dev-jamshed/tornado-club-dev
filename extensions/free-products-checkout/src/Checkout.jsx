@@ -2,7 +2,7 @@ import '@shopify/ui-extensions/preact';
 import { render } from "preact";
 import { useState, useEffect } from "preact/hooks";
 
-const API_BASE_URL = "https://wallet-contrast-handhelds-nearby.trycloudflare.com";
+const API_BASE_URL = "https://fibre-grande-tissue-stamp.trycloudflare.com";
 const VERIFY_REFERRAL_URL = `${API_BASE_URL}/api/verify-referral`;
 const REFERRAL_PRODUCTS_URL = `${API_BASE_URL}/api/referral-products`;
 const CREATE_DISCOUNT_URL = `${API_BASE_URL}/api/create-automatic-discount`;
