@@ -21,7 +21,7 @@ function getEnvVariables() {
   const accessToken = process.env.SHOPIFY_ACCESS_TOKEN;
   const adminEmail = process.env.ADMIN_EMAIL;
   // const referralApiBaseUrl = process.env.REFERRAL_API_BASE_URL;
-  const referralApiBaseUrl = "https://hands-mart-turtle-ratings.trycloudflare.com";
+  const referralApiBaseUrl = "https://behaviour-cosmetic-cms-freeze.trycloudflare.com";
   const smtpUser = process.env.SMTP_USER;
 
   if (!shopDomain || !accessToken) {

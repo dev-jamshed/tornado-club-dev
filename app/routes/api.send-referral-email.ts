@@ -5,8 +5,6 @@ import { json } from "@remix-run/node";
 // ✅ SMTP Setup
 import nodemailer from 'nodemailer';
 
-
-
 const smtpTransporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
   port: parseInt(process.env.SMTP_PORT || '587'),
@@ -17,7 +15,102 @@ const smtpTransporter = nodemailer.createTransport({
   },
 });
 
-// Generate WhatsApp share link
+// ✅ Helper function to get all environment variables
+function getEnvVariables() {
+  const shopDomain = process.env.SHOPIFY_SHOP_DOMAIN;
+  const accessToken = process.env.SHOPIFY_ACCESS_TOKEN;
+
+  if (!shopDomain || !accessToken) {
+    throw new Error("Shopify credentials not configured");
+  }
+
+  return {
+    shopDomain,
+    accessToken,
+  };
+}
+
+// ✅ Get customer referral code from Shopify metafields
+async function getCustomerReferralCodeFromMetafields(customerEmail: string) {
+  try {
+    const { shopDomain, accessToken } = getEnvVariables();
+    
+    console.log(`🔍 Looking up customer by email: ${customerEmail}`);
+    
+    // Step 1: Find customer by email
+    const searchResponse = await fetch(
+      `https://${shopDomain}/admin/api/2024-01/customers/search.json?query=email:${encodeURIComponent(customerEmail)}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Shopify-Access-Token": accessToken,
+        },
+      },
+    );
+
+    if (!searchResponse.ok) {
+      const errorText = await searchResponse.text();
+      console.error("❌ Customer search failed:", errorText);
+      return null;
+    }
+
+    const searchData = await searchResponse.json();
+    
+    if (!searchData.customers || searchData.customers.length === 0) {
+      console.log(`❌ No customer found with email: ${customerEmail}`);
+      return null;
+    }
+
+    const customer = searchData.customers[0];
+    console.log(`✅ Customer found: ${customer.id} - ${customer.email}`);
+    
+    // Step 2: Get customer metafields
+    const metafieldsResponse = await fetch(
+      `https://${shopDomain}/admin/api/2024-01/customers/${customer.id}/metafields.json`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Shopify-Access-Token": accessToken,
+        },
+      },
+    );
+
+    if (!metafieldsResponse.ok) {
+      const errorText = await metafieldsResponse.text();
+      console.error("❌ Metafields fetch failed:", errorText);
+      return null;
+    }
+
+    const metafieldsData = await metafieldsResponse.json();
+    const metafields = metafieldsData.metafields || [];
+    
+    // Step 3: Look for referral code in metafields
+    console.log(`📦 Checking ${metafields.length} metafields for referral code`);
+    
+    let referralCode = null;
+    
+    // Check different possible locations
+    for (const field of metafields) {
+      console.log(`  - ${field.namespace}.${field.key}: "${field.value}"`);
+      
+      if ((field.key === "referral_code" || field.key === "referralcode") && field.value) {
+        referralCode = field.value;
+        console.log(`✅ Found referral code in metafield: ${referralCode}`);
+        break;
+      }
+    }
+    
+    return referralCode;
+    
+  } catch (error) {
+    console.error("🔥 Get customer referral code error:", error);
+    return null;
+  }
+}
+
+// ✅ Generate WhatsApp share link
 function getWhatsAppShareLink(referralCode: string, shopDomain: string) {
   const shopUrl = `https://${shopDomain}?ref=${referralCode}`;
   const message = `Check out this store! Use my referral code "${referralCode}" to get a FREE GIFT on your order.\n\nShop: ${shopUrl}`;
@@ -25,6 +118,7 @@ function getWhatsAppShareLink(referralCode: string, shopDomain: string) {
   return `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
 }
 
+// ✅ Send email function
 async function sendReferralEmailSMTP(to: string, name: string, referralCode: string) {
   const shopName = process.env.SHOP_NAME || "Tornado Club";
   const shopDomain = process.env.SHOPIFY_SHOP_DOMAIN || "tornado-club-dev.myshopify.com";
@@ -117,19 +211,52 @@ export async function action({ request }: ActionFunctionArgs) {
 
   try {
     const body = await request.json();
+    console.log("📦 Request Body:", body);
     
-    if (!body.customerEmail || !body.referralCode) {
+    // ✅ Check for required fields
+    if (!body.customerEmail) {
       return json(
-        { success: false, error: "Missing customerEmail or referralCode" },
+        { success: false, error: "Missing customerEmail" },
         { status: 400 }
       );
     }
 
-    const customerName = body.customerName || "Customer";
     const customerEmail = body.customerEmail;
-    const referralCode = body.referralCode;
+    const customerName = body.customerName || "Customer";
+    const referralCodeParam = body.referralCode;
 
-    console.log(`📧 Sending referral email via SMTP to: ${customerEmail}`);
+    console.log(`🔍 Parameters received:`);
+    console.log(`  - Email: ${customerEmail}`);
+    console.log(`  - Name: ${customerName}`);
+    console.log(`  - Referral Code Param: ${referralCodeParam}`);
+    
+    let referralCode = referralCodeParam;
+    
+    // ✅ CONDITION: Agar referralCode null/undefined hai
+    if (!referralCode || referralCode === 'null' || referralCode === 'undefined') {
+      console.log(`🔄 Referral code not provided, fetching from customer metafields...`);
+      
+      // Customer ke metafields se referral code nikalo
+      const customerReferralCode = await getCustomerReferralCodeFromMetafields(customerEmail);
+      
+      if (customerReferralCode) {
+        referralCode = customerReferralCode;
+        console.log(`✅ Using referral code from metafields: ${referralCode}`);
+      } else {
+        // Agar metafields mein bhi nahi mila
+        console.log(`❌ No referral code found in metafields for ${customerEmail}`);
+        return json(
+          { 
+            success: false, 
+            error: `No referral code found for customer ${customerEmail}. Please provide a referral code or ensure customer has one in Shopify metafields.` 
+          },
+          { status: 400 }
+        );
+      }
+    }
+    
+    // ✅ Ab referralCode hai, email bhejo
+    console.log(`📧 Sending referral email via SMTP to: ${customerEmail} with code: ${referralCode}`);
 
     const result = await sendReferralEmailSMTP(customerEmail, customerName, referralCode);
     
@@ -137,6 +264,7 @@ export async function action({ request }: ActionFunctionArgs) {
       success: true,
       message: "Referral email sent successfully via SMTP",
       messageId: result.messageId,
+      referralCode: referralCode,
       shopLink: `https://${process.env.SHOPIFY_SHOP_DOMAIN || 'tornado-club-dev.myshopify.com'}?ref=${referralCode}`,
       whatsappLink: getWhatsAppShareLink(referralCode, process.env.SHOPIFY_SHOP_DOMAIN || 'tornado-club-dev.myshopify.com')
     });
