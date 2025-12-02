@@ -15,14 +15,16 @@ function corsResponse(body: any, status = 200) {
   });
 }
 
-// ✅ LOADER - SAB REFERRAL CODES GET KAREIN
+// ✅ LOADER - SAB REFERRAL CODES GET KAREIN AUR SINGLE CODE CHECK KAREIN
 export async function loader({ request }: LoaderFunctionArgs) {
   try {
     const url = new URL(request.url);
     const referralCode = url.searchParams.get('code');
     
-    // Agar specific code diya hai toh woh get karein
+    // Agar specific code diya hai toh woh check karein
     if (referralCode) {
+      console.log(`🔍 Checking referral code: ${referralCode}`);
+      
       const referralData = await prisma.referralCode.findUnique({
         where: { referralCode: referralCode }
       });
@@ -31,6 +33,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         success: true,
         data: referralData,
         found: !!referralData,
+        exists: !!referralData,
         message: referralData ? "Referral code found" : "Referral code not found"
       });
     }
@@ -58,6 +61,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
 }
 
+// ✅ ACTION - NEW REFERRAL CODE CREATE KAREIN
 export async function action({ request }: ActionFunctionArgs) {
   if (request.method === "OPTIONS") {
     return new Response(null, { 
@@ -73,9 +77,31 @@ export async function action({ request }: ActionFunctionArgs) {
   try {
     const { customerId, customerName, customerEmail, referralCode } = await request.json();
 
-    console.log("📝 FLOW SE DATA RECEIVED:", {
+    console.log("📝 CREATE REFERRAL - DATA RECEIVED:", {
       customerId, customerName, customerEmail, referralCode
     });
+
+    if (!customerId || !referralCode) {
+      return corsResponse({
+        success: false,
+        error: "customerId and referralCode are required"
+      }, 400);
+    }
+
+    // ✅ PEHLE CHECK KAREIN KE CODE EXIST KARTA HAI YA NAHI
+    const existingReferral = await prisma.referralCode.findUnique({
+      where: { referralCode: referralCode }
+    });
+
+    if (existingReferral) {
+      console.log("✅ Referral code already exists:", existingReferral);
+      return corsResponse({
+        success: true,
+        message: "Referral code already exists",
+        existing: true,
+        data: existingReferral
+      });
+    }
 
     // ✅ APNE REFERRALCODE TABLE MEIN DATA INSERT KAREIN
     const referral = await prisma.referralCode.create({
@@ -89,19 +115,22 @@ export async function action({ request }: ActionFunctionArgs) {
       }
     });
 
-    console.log("✅ DATABASE MEIN SAVE HO GAYA:", referral);
+    console.log("✅ DATABASE MEIN NEW ENTRY CREATE HO GAYA:", referral);
 
     return corsResponse({
       success: true,
       message: "Referral data saved to database",
+      existing: false,
       referralId: referral.id,
-      referralCode: referral.referralCode
+      referralCode: referral.referralCode,
+      data: referral
     });
 
   } catch (error: any) {
     console.error('🔥 DATABASE INSERT ERROR:', error);
     
     if (error.code === 'P2002') {
+      // Unique constraint violation
       return corsResponse({
         success: true,
         message: "Referral code already exists",
@@ -111,7 +140,8 @@ export async function action({ request }: ActionFunctionArgs) {
     
     return corsResponse({
       success: false,
-      error: "Failed to save referral data"
+      error: "Failed to save referral data",
+      details: error.message
     }, 500);
   } finally {
     await prisma.$disconnect();
