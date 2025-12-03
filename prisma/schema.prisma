@@ -63,3 +63,20 @@ model ReferralUsage {
   @@index([customerEmail, referralCode])
   @@index([customerId, referralCode])
 }
+
+
+
+model RewardRedemption {
+  id          String   @id @default(cuid())
+  referralCode String   @unique
+  customerEmail String
+  customerName  String?
+  referralCount Int
+  rewardSessionId String @unique @default(cuid())  // Unique session ID
+  rewardStatus    String   @default("pending") // pending, claimed, redeemed
+  claimLink      String?  // Claim ka unique link
+  claimedAt      DateTime?
+  redeemedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}

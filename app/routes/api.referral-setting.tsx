@@ -21,21 +21,39 @@ type ActionBody = {
   referralRewards?: ReferralReward[];
 };
 
-// =============================
-// GET - Load referral settings
-// =============================
+// ✅ CORS RESPONSE HELPER
+function corsResponse(body: any, status = 200, headers: Record<string, string> = {}) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Max-Age": "86400",
+      ...headers
+    },
+  });
+}
+
+// ✅ OPTIONS HANDLER FOR CORS PREFLIGHT
 export async function loader({ request }: LoaderFunctionArgs) {
+  if (request.method === "OPTIONS") {
+    return corsResponse({}, 200);
+  }
+
   try {
     const settings = await prisma.referralSettings.findFirst();
 
-    return Response.json({
+    return corsResponse({
       success: true,
       data: {
         referralRewards: (settings?.referralRewards as ReferralReward[]) || [],
       },
     });
   } catch (error) {
-    return Response.json({
+    return corsResponse({
       success: true,
       data: { referralRewards: [] },
     });
@@ -46,6 +64,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
 // POST - Create / Update / Delete
 // =============================
 export async function action({ request }: ActionFunctionArgs) {
+  // ✅ HANDLE OPTIONS REQUEST
+  if (request.method === "OPTIONS") {
+    return corsResponse({}, 200);
+  }
+
   try {
     const body = (await request.json()) as ActionBody;
     const { referralRewards, method } = body;
@@ -59,7 +82,7 @@ export async function action({ request }: ActionFunctionArgs) {
         },
       });
 
-      return Response.json({
+      return corsResponse({
         success: true,
         message: "Created Successfully",
         data: created,
@@ -91,7 +114,7 @@ export async function action({ request }: ActionFunctionArgs) {
         });
       }
 
-      return Response.json({
+      return corsResponse({
         success: true,
         message: existingSettings ? "Updated Successfully" : "Created Successfully",
         data: result,
@@ -108,21 +131,44 @@ export async function action({ request }: ActionFunctionArgs) {
         });
       }
 
-      return Response.json({
+      return corsResponse({
         success: true,
         message: "Deleted Successfully",
       });
     }
 
-    return Response.json({
+    return corsResponse({
       success: false,
       message: "Invalid Method",
-    });
+    }, 400);
+    
   } catch (error: any) {
     console.error("API Error:", error);
-    return Response.json({
+    return corsResponse({
       success: false,
       error: error?.message ?? "Unknown error",
+    }, 500);
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+// ✅ ADDITIONAL LOADER FOR GET REQUESTS (NON-OPTIONS)
+export async function loaderGET({ request }: LoaderFunctionArgs) {
+  try {
+    const settings = await prisma.referralSettings.findFirst();
+
+    return corsResponse({
+      success: true,
+      data: {
+        referralRewards: (settings?.referralRewards as ReferralReward[]) || [],
+        settings: settings
+      },
+    });
+  } catch (error) {
+    return corsResponse({
+      success: true,
+      data: { referralRewards: [], settings: null },
     });
   }
 }
