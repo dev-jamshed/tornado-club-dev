@@ -20,8 +20,7 @@ function getEnvVariables() {
   const shopDomain = process.env.SHOPIFY_SHOP_DOMAIN;
   const accessToken = process.env.SHOPIFY_ACCESS_TOKEN;
   const adminEmail = process.env.ADMIN_EMAIL;
-  const referralApiBaseUrl =
-    "https://downloading-amazing-slightly-records.trycloudflare.com";
+  const referralApiBaseUrl = process.env.REFERRAL_API_BASE_URL ||  "https://downloading-amazing-slightly-records.trycloudflare.com";
   const smtpUser = process.env.SMTP_USER;
   const storeUrl =
     process.env.STORE_URL || "https://tornado-club.myshopify.com";

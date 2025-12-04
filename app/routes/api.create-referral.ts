@@ -3,6 +3,9 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
+// 🔥 YEH LINE ADD KARO
+const SHOPIFY_SHOP_DOMAIN = process.env.SHOPIFY_SHOP_DOMAIN || "https://tornado-club-dev.myshopify.com";
+
 function corsResponse(body: any, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -110,7 +113,7 @@ export async function action({ request }: ActionFunctionArgs) {
         customerName: customerName || "Unknown Customer",
         customerEmail: customerEmail || "unknown@example.com",
         referralCode: referralCode,
-        referralLink: `https://tornado-club-dev.myshopify.com?ref=${referralCode}`,
+        referralLink: `${SHOPIFY_SHOP_DOMAIN}?ref=${referralCode}`,
         referralCount: 0
       }
     });
